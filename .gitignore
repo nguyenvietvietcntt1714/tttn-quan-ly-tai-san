@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Environment variables (Chỉ giữ lại .env.example)
+.env
+.env.*
+!.env.example
+
+# Database files & dumps
+*.sql
+*.sqlite
+*.db
+pgdata/
+postgres-data/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
