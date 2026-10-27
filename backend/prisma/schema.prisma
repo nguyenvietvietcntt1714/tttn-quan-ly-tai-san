@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// 1. NGƯỜI DÙNG & DANH MỤC
+// ==========================================
+enum Role {
+  MANAGER           // Quản lý tài sản
+  USER              // Người sử dụng
+  INVENTORY_CHECKER // Người kiểm kê
+}
+
+model User {
+  id               String         @id @default(uuid())
+  username         String         @unique
+  password         String
+  fullName         String
+  role             Role           @default(USER)
+  departmentId     String?
+  department       Department?    @relation(fields: [departmentId], references: [id])
+
+  // Quan hệ: Tài sản đang giữ và Lịch sử/Phiếu đã thao tác
+  assets           Asset[]        @relation("AssetUser")
+  ticketsCreated   Ticket[]       @relation("TicketCreator")
+  ticketsConfirmed Ticket[]       @relation("TicketConfirmer")
+  historiesCreated AssetHistory[] @relation("HistoryActor")
+  
+  ticketsFromUser  Ticket[]       @relation("TicketFromUser")
+  ticketsToUser    Ticket[]       @relation("TicketToUser")
+}
+
+model Department {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  users       User[]
+  assets      Asset[]  @relation("AssetDepartment")
+  ticketsFrom Ticket[] @relation("TicketFromDept")
+  ticketsTo   Ticket[] @relation("TicketToDept")
+}
+
+model Facility {
+  id    String @id @default(uuid())
+  name  String @unique // VD: Điện mặt trời A, Điện gió B
+  areas Area[]
+}
+
+model Area {
+  id          String   @id @default(uuid())
+  name        String
+  facilityId  String
+  facility    Facility @relation(fields: [facilityId], references: [id])
+  assets      Asset[]
+  ticketsFrom Ticket[] @relation("TicketFromArea")
+  ticketsTo   Ticket[] @relation("TicketToArea")
+}
+
+model AssetGroup {
+  id     String  @id @default(uuid())
+  code   String  @unique
+  name   String
+  assets Asset[]
+}
+
+// ==========================================
+// 2. HỒ SƠ TÀI SẢN
+// ==========================================
+enum ManagementStatus {
+  AVAILABLE      // Sẵn sàng
+  IN_USE         // Đang sử dụng
+  INACTIVE       // Ngừng theo dõi
+}
+
+enum AssetCondition {
+  GOOD             // Tốt
+  NEEDS_INSPECTION // Cần kiểm tra
+  BROKEN           // Hỏng
+}
+
+model Asset {
+  id               String           @id @default(uuid())
+  assetCode        String           @unique // Mã tài sản, không đổi sau khi tạo
+  name             String
+  groupId          String
+  group            AssetGroup       @relation(fields: [groupId], references: [id])
+  areaId           String
+  area             Area             @relation(fields: [areaId], references: [id])
+  
+  // Bên chịu trách nhiệm (1 cá nhân HOẶC 1 bộ phận)
+  assignedUserId   String?
+  assignedUser     User?            @relation("AssetUser", fields: [assignedUserId], references: [id])
+  assignedDeptId   String?
+  assignedDept     Department?      @relation("AssetDepartment", fields: [assignedDeptId], references: [id])
+
+  managementStatus ManagementStatus @default(AVAILABLE)
+  condition        AssetCondition   @default(GOOD)
+  
+  // Các trường tùy chọn
+  model            String?
+  serial           String?
+  brand            String?
+  image            String?
+  notes            String?
+  receiptDate      DateTime?
+  warrantyDate     DateTime?
+  purchaseValue    Decimal?         @default(0) // Giá trị không âm
+
+  // CỘT QUAN TRỌNG CHO THÀNH VIÊN B: Chống ghi đè (Optimistic Locking)
+  version          Int              @default(1) 
+
+  tickets          Ticket[]
+  histories        AssetHistory[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+// ==========================================
+// 3. PHIẾU BIẾN ĐỘNG & LỊCH SỬ (Dành cho luồng phiếu)
+// ==========================================
+enum TicketType {
+  HANDOVER   // Bàn giao
+  TRANSFER   // Điều chuyển
+  RECALL     // Thu hồi
+  DEACTIVATE // Ngừng theo dõi
+}
+
+enum TicketStatus {
+  DRAFT      // Nháp
+  CONFIRMED  // Đã xác nhận
+  CANCELLED  // Đã hủy
+}
+
+model Ticket {
+  id               String       @id @default(uuid())
+  ticketCode       String       @unique
+  type             TicketType
+  status           TicketStatus @default(DRAFT)
+  
+  assetId          String
+  asset            Asset        @relation(fields: [assetId], references: [id])
+  
+  // Snapshot Trước biến động (Phục vụ check Dữ liệu cũ - U16)
+  fromAreaId       String?
+  fromArea         Area?        @relation("TicketFromArea", fields: [fromAreaId], references: [id])
+  fromUserId       String?
+  fromUser         User?        @relation("TicketFromUser", fields: [fromUserId], references: [id])
+  fromDeptId       String?
+  fromDept         Department?  @relation("TicketFromDept", fields: [fromDeptId], references: [id])
+  fromStatus       ManagementStatus?
+
+  // Snapshot Sau biến động
+  toAreaId         String?
+  toArea           Area?        @relation("TicketToArea", fields: [toAreaId], references: [id])
+  toUserId         String?
+  toUser           User?        @relation("TicketToUser", fields: [toUserId], references: [id])
+  toDeptId         String?
+  toDept           Department?  @relation("TicketToDept", fields: [toDeptId], references: [id])
+  toStatus         ManagementStatus?
+
+  reason           String
+  
+  creatorId        String
+  creator          User         @relation("TicketCreator", fields: [creatorId], references: [id])
+  confirmerId      String?
+  confirmer        User?        @relation("TicketConfirmer", fields: [confirmerId], references: [id])
+  confirmedAt      DateTime?
+
+  // Tham chiếu phiếu cũ nếu phiếu trước đó làm sai (Yêu cầu U14)
+  referenceTicketId String?     
+  
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+}
+
+model AssetHistory {
+  id          String   @id @default(uuid())
+  assetId     String
+  asset       Asset    @relation(fields: [assetId], references: [id])
+  
+  action      String   // VD: "Cập nhật tình trạng", "Bàn giao", "Điều chuyển"
+  reason      String?
+  
+  // Dùng JSON để lưu linh hoạt mọi sự thay đổi (trước/sau) mà không cần tạo hàng chục cột
+  beforeState Json?
+  afterState  Json?
+  
+  actorId     String
+  actor       User     @relation("HistoryActor", fields: [actorId], references: [id])
+  
+  createdAt   DateTime @default(now())
+}
