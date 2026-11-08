@@ -82,6 +82,14 @@ enum AssetCondition {
   BROKEN           // Hỏng
 }
 
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  assets      Asset[]
+  createdAt   DateTime @default(now())
+}
+
 model Asset {
   id               String           @id @default(uuid())
   assetCode        String           @unique // Mã tài sản, không đổi sau khi tạo
@@ -90,7 +98,8 @@ model Asset {
   group            AssetGroup       @relation(fields: [groupId], references: [id])
   areaId           String
   area             Area             @relation(fields: [areaId], references: [id])
-  
+  categoryId       Int
+  category         Category @relation(fields: [categoryId], references: [id])
   // Bên chịu trách nhiệm (1 cá nhân HOẶC 1 bộ phận)
   assignedUserId   String?
   assignedUser     User?            @relation("AssetUser", fields: [assignedUserId], references: [id])
