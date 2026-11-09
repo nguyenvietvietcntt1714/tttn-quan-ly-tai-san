@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, Asset } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
@@ -22,6 +22,7 @@ export class AssetsService {
     return this.prisma.asset.findMany({
       include: {
         group: true,
+        category: true,
         area: {
           include: {
             facility: true,
@@ -48,6 +49,7 @@ export class AssetsService {
       where: { id },
       include: {
         group: true,
+        category: true,
         area: {
           include: {
             facility: true,
@@ -77,7 +79,7 @@ export class AssetsService {
     return asset;
   }
 
-  // Tạo tài sản
+  // Tạo tài sản mới
   async create(dto: CreateAssetDto) {
     const {
       facilityId,
@@ -98,57 +100,53 @@ export class AssetsService {
 
     // Kiểm tra nhóm tài sản
     const group = await this.prisma.assetGroup.findUnique({
-  where: { id: dto.groupId },
-  select: {
-    id: true,
-    isActive: true,
-  },
-});
-
-if (!group) {
-  throw new BadRequestException('Nhóm tài sản không tồn tại.');
-}
-
-if (!group.isActive) {
-  throw new BadRequestException(
-    'Nhóm tài sản đã ngừng sử dụng, không thể chọn mới.',
-  );
-}
+      where: { id: dto.groupId },
+      select: {
+        id: true,
+        isActive: true,
+      },
+    });
 
     if (!group) {
       throw new BadRequestException('Nhóm tài sản không tồn tại.');
     }
 
+    if (!group.isActive) {
+      throw new BadRequestException(
+        'Nhóm tài sản đã ngừng sử dụng, không thể chọn mới.',
+      );
+    }
+
     // Kiểm tra khu vực có tồn tại và thuộc đúng cơ sở
     const area = await this.prisma.area.findUnique({
-  where: { id: dto.areaId },
-  select: {
-    id: true,
-    facilityId: true,
-    isActive: true,
-    facility: {
+      where: { id: dto.areaId },
       select: {
+        id: true,
+        facilityId: true,
         isActive: true,
+        facility: {
+          select: {
+            isActive: true,
+          },
+        },
       },
-    },
-  },
-});
+    });
 
-if (!area) {
-  throw new BadRequestException('Khu vực không tồn tại.');
-}
+    if (!area) {
+      throw new BadRequestException('Khu vực không tồn tại.');
+    }
 
-if (area.facilityId !== facilityId) {
-  throw new BadRequestException(
-    'Khu vực không thuộc cơ sở đã chọn.',
-  );
-}
+    if (area.facilityId !== facilityId) {
+      throw new BadRequestException(
+        'Khu vực không thuộc cơ sở đã chọn.',
+      );
+    }
 
-if (!area.isActive || !area.facility.isActive) {
-  throw new BadRequestException(
-    'Khu vực hoặc cơ sở đã ngừng sử dụng.',
-  );
-}
+    if (!area.isActive || !area.facility.isActive) {
+      throw new BadRequestException(
+        'Khu vực hoặc cơ sở đã ngừng sử dụng.',
+      );
+    }
 
     try {
       return await this.prisma.asset.create({
@@ -163,25 +161,24 @@ if (!area.isActive || !area.facility.isActive) {
         },
         include: {
           group: true,
+          category: true,
           area: {
             include: { facility: true },
           },
         },
       });
     } catch (error) {
-      // Bảo vệ trường hợp hai yêu cầu đồng thời tạo cùng mã
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
         throw new ConflictException('Mã tài sản đã tồn tại.');
       }
-
       throw error;
     }
   }
 
-  // Cập nhật thông tin hồ sơ được phép chỉnh sửa
+  // Cập nhật thông tin hồ sơ tài sản
   async update(id: string, dto: UpdateAssetDto) {
     const existing = await this.prisma.asset.findUnique({
       where: { id },
@@ -192,8 +189,6 @@ if (!area.isActive || !area.facility.isActive) {
       throw new NotFoundException('Không tìm thấy tài sản.');
     }
 
-    // Chỉ cập nhật các trường hồ sơ cho phép.
-    // Không dùng ...dto để tránh vô tình ghi đè trường quản lý.
     const data: Prisma.AssetUpdateInput = {
       ...(dto.name !== undefined && { name: dto.name }),
       ...(dto.model !== undefined && { model: dto.model }),
@@ -221,126 +216,148 @@ if (!area.isActive || !area.facility.isActive) {
       data,
       include: {
         group: true,
+        category: true,
         area: {
           include: { facility: true },
         },
       },
     });
   }
-  async findFiltered(query: FindAssetsQueryDto) {
-  const {
-    search,
-    facilityId,
-    areaId,
-    groupId,
-    managementStatus,
-    condition,
-    page = 1,
-    limit = 10,
-  } = query;
 
-  const where: Prisma.AssetWhereInput = {
-    ...(search?.trim()
-      ? {
-          OR: [
-            { assetCode: { contains: search.trim(), mode: 'insensitive' } },
-            { name: { contains: search.trim(), mode: 'insensitive' } },
-            { brand: { contains: search.trim(), mode: 'insensitive' } },
-            { serial: { contains: search.trim(), mode: 'insensitive' } },
-          ],
-        }
-      : {}),
-    ...(groupId ? { groupId } : {}),
-    ...(areaId ? { areaId } : {}),
-    ...(facilityId ? { area: { facilityId } } : {}),
-    ...(managementStatus ? { managementStatus } : {}),
-    ...(condition ? { condition } : {}),
-  };
+  // Xóa tài sản theo ID
+  async remove(id: string): Promise<Asset> {
+    const existing = await this.prisma.asset.findUnique({
+      where: { id },
+      select: { id: true },
+    });
 
-  const [items, total] = await this.prisma.$transaction([
-    this.prisma.asset.findMany({
-      where,
-      include: {
-        group: true,
-        area: { include: { facility: true } },
-        assignedUser: true,
-        assignedDept: true,
-      },
-      orderBy: { updatedAt: 'desc' },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    this.prisma.asset.count({ where }),
-  ]);
+    if (!existing) {
+      throw new NotFoundException('Không tìm thấy tài sản.');
+    }
 
-  return {
-    items,
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    },
-  };
-}
-async changeCondition(
-  assetId: string,
-  dto: ChangeAssetConditionDto,
-) {
-  const reason = dto.reason.trim();
-
-  if (!reason) {
-    throw new BadRequestException('Lý do thay đổi không được để trống');
+    return this.prisma.asset.delete({
+      where: { id },
+    });
   }
 
-  return this.prisma.$transaction(async (tx) => {
-    const asset = await tx.asset.findUnique({
-      where: { id: assetId },
-    });
+  // Tìm kiếm, lọc và phân trang tài sản
+  async findFiltered(query: FindAssetsQueryDto) {
+    const {
+      search,
+      facilityId,
+      areaId,
+      groupId,
+      managementStatus,
+      condition,
+      page = 1,
+      limit = 10,
+    } = query;
 
-    if (!asset) {
-      throw new NotFoundException('Không tìm thấy tài sản');
-    }
+    const where: Prisma.AssetWhereInput = {
+      ...(search?.trim()
+        ? {
+            OR: [
+              { assetCode: { contains: search.trim(), mode: 'insensitive' } },
+              { name: { contains: search.trim(), mode: 'insensitive' } },
+              { brand: { contains: search.trim(), mode: 'insensitive' } },
+              { serial: { contains: search.trim(), mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+      ...(groupId ? { groupId } : {}),
+      ...(areaId ? { areaId } : {}),
+      ...(facilityId ? { area: { facilityId } } : {}),
+      ...(managementStatus ? { managementStatus } : {}),
+      ...(condition ? { condition } : {}),
+    };
 
-    if (asset.condition === dto.condition) {
-      throw new BadRequestException(
-        'Tình trạng mới giống tình trạng hiện tại',
-      );
-    }
-
-    const updated = await tx.asset.update({
-      where: { id: assetId },
-      data: {
-        condition: dto.condition,
-        version: { increment: 1 },
-      },
-    });
-
-    await tx.assetHistory.create({
-      data: {
-        assetId: asset.id,
-        actorId: dto.actorId,
-        action: 'CHANGE_CONDITION',
-        reason,
-        beforeState: {
-          condition: asset.condition,
-          version: asset.version,
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.asset.findMany({
+        where,
+        include: {
+          group: true,
+          category: true,
+          area: { include: { facility: true } },
+          assignedUser: true,
+          assignedDept: true,
         },
-        afterState: {
-          condition: updated.condition,
-          version: updated.version,
-        },
-      },
-    });
+        orderBy: { updatedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.asset.count({ where }),
+    ]);
 
     return {
-      message: 'Cập nhật tình trạng và lưu lịch sử thành công',
-      asset: updated,
+      items,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     };
-  });
-}
+  }
 
-  // A5: Ngừng theo dõi tài sản, giữ nguyên dữ liệu và lịch sử
+  // Thay đổi tình trạng tài sản và ghi lịch sử
+  async changeCondition(
+    assetId: string,
+    dto: ChangeAssetConditionDto,
+  ) {
+    const reason = dto.reason.trim();
+
+    if (!reason) {
+      throw new BadRequestException('Lý do thay đổi không được để trống');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const asset = await tx.asset.findUnique({
+        where: { id: assetId },
+      });
+
+      if (!asset) {
+        throw new NotFoundException('Không tìm thấy tài sản');
+      }
+
+      if (asset.condition === dto.condition) {
+        throw new BadRequestException(
+          'Tình trạng mới giống tình trạng hiện tại',
+        );
+      }
+
+      const updated = await tx.asset.update({
+        where: { id: assetId },
+        data: {
+          condition: dto.condition,
+          version: { increment: 1 },
+        },
+      });
+
+      await tx.assetHistory.create({
+        data: {
+          assetId: asset.id,
+          actorId: dto.actorId,
+          action: 'CHANGE_CONDITION',
+          reason,
+          beforeState: {
+            condition: asset.condition,
+            version: asset.version,
+          },
+          afterState: {
+            condition: updated.condition,
+            version: updated.version,
+          },
+        },
+      });
+
+      return {
+        message: 'Cập nhật tình trạng và lưu lịch sử thành công',
+        asset: updated,
+      };
+    });
+  }
+
+  // Ngừng theo dõi tài sản, giữ nguyên dữ liệu và lịch sử
   async deactivate(id: string, dto: DeactivateAssetDto) {
     const reason = dto.reason?.trim();
 
@@ -350,7 +367,6 @@ async changeCondition(
       );
     }
 
-    // Kiểm tra tài sản và lấy trạng thái trước khi thay đổi.
     const asset = await this.prisma.asset.findUnique({
       where: { id },
       select: {
@@ -376,7 +392,6 @@ async changeCondition(
       );
     }
 
-    // Chặn nếu còn phiếu bàn giao, điều chuyển hoặc thu hồi ở trạng thái nháp.
     const pendingTicket = await this.prisma.ticket.findFirst({
       where: {
         assetId: id,
@@ -397,7 +412,6 @@ async changeCondition(
       );
     }
 
-    // Kiểm tra người thực hiện tồn tại.
     const actor = await this.prisma.user.findUnique({
       where: { id: dto.actorId },
       select: { id: true },
@@ -409,9 +423,7 @@ async changeCondition(
       );
     }
 
-    // Mọi thay đổi được thực hiện trong cùng transaction.
     return this.prisma.$transaction(async (tx) => {
-      // Kiểm tra lại trong transaction để hạn chế thao tác lặp.
       const current = await tx.asset.findUnique({
         where: { id },
         select: {
@@ -430,8 +442,6 @@ async changeCondition(
         );
       }
 
-      // Chỉ đổi trạng thái và tăng version.
-      // Không xóa người/bộ phận được giao, phiếu hay lịch sử.
       const updated = await tx.asset.update({
         where: { id },
         data: {
@@ -440,7 +450,6 @@ async changeCondition(
         },
       });
 
-      // Tạo phiếu ngừng theo dõi đã xác nhận.
       const ticket = await tx.ticket.create({
         data: {
           ticketCode: `DEACT-${randomUUID()}`,
@@ -462,7 +471,6 @@ async changeCondition(
         },
       });
 
-      // Lưu trạng thái trước và sau vào lịch sử.
       await tx.assetHistory.create({
         data: {
           assetId: id,
@@ -495,5 +503,4 @@ async changeCondition(
       };
     });
   }
-
 }

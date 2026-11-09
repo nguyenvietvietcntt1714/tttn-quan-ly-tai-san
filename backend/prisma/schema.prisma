@@ -11,8 +11,8 @@ datasource db {
 // 1. NGƯỜI DÙNG & DANH MỤC
 // ==========================================
 enum Role {
-  MANAGER // Quản lý tài sản
-  USER // Người sử dụng
+  MANAGER           // Quản lý tài sản
+  USER              // Người sử dụng
   INVENTORY_CHECKER // Người kiểm kê
 }
 
@@ -46,29 +46,37 @@ model Department {
 }
 
 model Facility {
-  id       String  @id @default(uuid())
-  name     String  @unique // VD: Điện mặt trời A, Điện gió B
-  isActive Boolean @default(true)
+  id       String   @id @default(uuid())
+  name     String   @unique // VD: Điện mặt trời A, Điện gió B
+  isActive Boolean  @default(true)
   areas    Area[]
 }
 
 model Area {
-  id          String   @id @default(uuid())
-  name        String
-  facilityId  String
-  facility    Facility @relation(fields: [facilityId], references: [id])
-  isActive    Boolean  @default(true)
-  assets      Asset[]
+  id         String   @id @default(uuid())
+  name       String
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id])
+  isActive   Boolean  @default(true)
+  assets     Asset[]
   ticketsFrom Ticket[] @relation("TicketFromArea")
   ticketsTo   Ticket[] @relation("TicketToArea")
 }
 
 model AssetGroup {
-  id       String  @id @default(uuid())
-  code     String  @unique
+  id       String   @id @default(uuid())
+  code     String   @unique
   name     String
-  isActive Boolean @default(true)
+  isActive Boolean  @default(true)
   assets   Asset[]
+}
+
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  assets      Asset[]
+  createdAt   DateTime @default(now())
 }
 
 // ==========================================
@@ -76,14 +84,14 @@ model AssetGroup {
 // ==========================================
 enum ManagementStatus {
   AVAILABLE // Sẵn sàng
-  IN_USE // Đang sử dụng
-  INACTIVE // Ngừng theo dõi
+  IN_USE    // Đang sử dụng
+  INACTIVE  // Ngừng theo dõi
 }
 
 enum AssetCondition {
-  GOOD // Tốt
+  GOOD             // Tốt
   NEEDS_INSPECTION // Cần kiểm tra
-  BROKEN // Hỏng
+  BROKEN           // Hỏng
 }
 
 model Asset {
@@ -94,6 +102,8 @@ model Asset {
   group     AssetGroup @relation(fields: [groupId], references: [id])
   areaId    String
   area      Area       @relation(fields: [areaId], references: [id])
+  categoryId Int
+  category   Category  @relation(fields: [categoryId], references: [id])
 
   // Bên chịu trách nhiệm (1 cá nhân HOẶC 1 bộ phận)
   assignedUserId String?
@@ -127,14 +137,14 @@ model Asset {
 // 3. PHIẾU BIẾN ĐỘNG & LỊCH SỬ (Dành cho luồng phiếu)
 // ==========================================
 enum TicketType {
-  HANDOVER // Bàn giao
-  TRANSFER // Điều chuyển
-  RECALL // Thu hồi
+  HANDOVER   // Bàn giao
+  TRANSFER   // Điều chuyển
+  RECALL     // Thu hồi
   DEACTIVATE // Ngừng theo dõi
 }
 
 enum TicketStatus {
-  DRAFT // Nháp
+  DRAFT     // Nháp
   CONFIRMED // Đã xác nhận
   CANCELLED // Đã hủy
 }
@@ -150,20 +160,20 @@ model Ticket {
 
   // Snapshot Trước biến động (Phục vụ check Dữ liệu cũ - U16)
   fromAreaId String?
-  fromArea   Area?             @relation("TicketFromArea", fields: [fromAreaId], references: [id])
+  fromArea   Area?        @relation("TicketFromArea", fields: [fromAreaId], references: [id])
   fromUserId String?
-  fromUser   User?             @relation("TicketFromUser", fields: [fromUserId], references: [id])
+  fromUser   User?        @relation("TicketFromUser", fields: [fromUserId], references: [id])
   fromDeptId String?
-  fromDept   Department?       @relation("TicketFromDept", fields: [fromDeptId], references: [id])
+  fromDept   Department?  @relation("TicketFromDept", fields: [fromDeptId], references: [id])
   fromStatus ManagementStatus?
 
   // Snapshot Sau biến động
   toAreaId String?
-  toArea   Area?             @relation("TicketToArea", fields: [toAreaId], references: [id])
+  toArea   Area?        @relation("TicketToArea", fields: [toAreaId], references: [id])
   toUserId String?
-  toUser   User?             @relation("TicketToUser", fields: [toUserId], references: [id])
+  toUser   User?        @relation("TicketToUser", fields: [toUserId], references: [id])
   toDeptId String?
-  toDept   Department?       @relation("TicketToDept", fields: [toDeptId], references: [id])
+  toDept   Department?  @relation("TicketToDept", fields: [toDeptId], references: [id])
   toStatus ManagementStatus?
 
   reason String

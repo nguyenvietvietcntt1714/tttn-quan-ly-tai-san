@@ -1,7 +1,7 @@
-
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -10,6 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { Asset } from '@prisma/client';
 
 import { AssetsService } from './assets.service';
 import { CreateAssetDto } from './dto/create-asset.dto';
@@ -33,7 +34,7 @@ export class AssetsController {
   // GET /assets/:id: Xem chi tiết tài sản
   @Get(':id')
   @ApiOperation({ summary: 'Xem chi tiết tài sản' })
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.assetsService.findOne(id);
   }
 
@@ -66,15 +67,22 @@ export class AssetsController {
     return this.assetsService.changeCondition(id, dto);
   }
   
-  // PATCH /assets/:id/deactivate
+  // PATCH /assets/:id/deactivate: Ngừng theo dõi tài sản
   @Patch(':id/deactivate')
   @ApiOperation({
     summary: 'Ngừng theo dõi tài sản và lưu lịch sử',
   })
-deactivate(
-  @Param('id', ParseUUIDPipe) id: string,
-  @Body() dto: DeactivateAssetDto,
-) {
-  return this.assetsService.deactivate(id, dto);
-}
+  deactivate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DeactivateAssetDto,
+  ) {
+    return this.assetsService.deactivate(id, dto);
+  }
+
+  // DELETE /assets/:id: Xóa tài sản (nếu service hỗ trợ)
+  @Delete(':id')
+  @ApiOperation({ summary: 'Xóa tài sản' })
+  remove(@Param('id', ParseUUIDPipe) id: string): Promise<Asset> {
+    return this.assetsService.remove(id);
+  }
 }
