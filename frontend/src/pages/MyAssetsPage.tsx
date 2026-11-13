@@ -1,15 +1,32 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Package, Search, MapPin, Tag, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
 
 interface Asset {
   id: string;
-  code: string;
+  assetCode: string;
   name: string;
-  category: string;
-  site: string;
-  status: string; // Trạng thái quản lý (Đang sử dụng, Sẵn sàng...)
-  condition: string; // Tình trạng (Tốt, Cần kiểm tra, Hỏng...)
-  assignedDate: string;
+  groupName: string;
+  areaName: string;
+  facilityName: string;
+  status: string;
+  condition: string;
+  assignedDate?: string | null;
+}
+
+// Map dữ liệu backend (Prisma) sang dạng hiển thị của trang
+function mapAsset(raw: any): Asset {
+  return {
+    id: raw.id,
+    assetCode: raw.assetCode,
+    name: raw.name,
+    groupName: raw.group?.name ?? '—',
+    areaName: raw.area?.name ?? '—',
+    facilityName: raw.area?.facility?.name ?? '—',
+    status: raw.managementStatus ?? raw.status ?? 'AVAILABLE',
+    condition: raw.condition ?? 'GOOD',
+    assignedDate: raw.assignedUserId ? raw.updatedAt : null,
+  };
 }
 
 export default function MyAssetsPage() {
@@ -20,53 +37,71 @@ export default function MyAssetsPage() {
   // Lấy thông tin user hiện tại từ localStorage/sessionStorage
   const userSession = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
 
-  // Giả lập gọi API lấy danh sách tài sản của cá nhân user đang đăng nhập
+  // Gọi API backend lấy danh sách tài sản (fallback mock khi backend chưa chạy)
   useEffect(() => {
-    // Sau này khi Backend (Thành viên A/B) xong API, bạn thay thế đoạn setTimeout này bằng axios.get('/api/assets/my-assets')
-    setTimeout(() => {
-      const mockAssets: Asset[] = [
-        {
-          id: '1',
-          code: 'AST-001',
-          name: 'Laptop Dell Latitude 5420',
-          category: 'Thiết bị IT',
-          site: 'Cơ sở chính - Tầng 3 (Phòng Dev)',
-          status: 'Đang sử dụng',
-          condition: 'Tốt',
-          assignedDate: '2026-01-15'
-        },
-        {
-          id: '2',
-          code: 'AST-014',
-          name: 'Màn hình ViewSonic 27 inch',
-          category: 'Thiết bị IT',
-          site: 'Cơ sở chính - Tầng 3 (Phòng Dev)',
-          status: 'Đang sử dụng',
-          condition: 'Tốt',
-          assignedDate: '2026-01-15'
-        },
-        {
-          id: '3',
-          code: 'AST-032',
-          name: 'Ghế công thái học Ergonomic',
-          category: 'Nội thất văn phòng',
-          site: 'Cơ sở chính - Tầng 3 (Khu làm việc)',
-          status: 'Đang sử dụng',
-          condition: 'Cần kiểm tra',
-          assignedDate: '2025-11-20'
+    let cancelled = false;
+    axios
+      .get('http://localhost:3000/assets')
+      .then((res) => {
+        if (!cancelled) {
+          setAssets((res.data as any[]).map(mapAsset));
+          setLoading(false);
         }
-      ];
-      setAssets(mockAssets);
-      setLoading(false);
-    }, 500);
+      })
+      .catch(() => {
+        // Backend chưa chạy hoặc lỗi: dùng dữ liệu giả để trang vẫn hiển thị
+        if (!cancelled) {
+          const mockAssets: Asset[] = [
+            {
+              id: '1',
+              assetCode: 'AST-001',
+              name: 'Laptop Dell Latitude 5420',
+              groupName: 'Thiết bị IT',
+              areaName: 'Tầng 3 (Phòng Dev)',
+              facilityName: 'Cơ sở chính',
+              status: 'IN_USE',
+              condition: 'GOOD',
+              assignedDate: '2026-01-15',
+            },
+            {
+              id: '2',
+              assetCode: 'AST-014',
+              name: 'Màn hình ViewSonic 27 inch',
+              groupName: 'Thiết bị IT',
+              areaName: 'Tầng 3 (Phòng Dev)',
+              facilityName: 'Cơ sở chính',
+              status: 'IN_USE',
+              condition: 'GOOD',
+              assignedDate: '2026-01-15',
+            },
+          ];
+          setAssets(mockAssets);
+          setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Lọc tài sản theo từ khóa tìm kiếm
-  const filteredAssets = assets.filter(item => 
+  const filteredAssets = assets.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.category.toLowerCase().includes(searchTerm.toLowerCase())
+    item.assetCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.groupName.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Làm mới: gọi lại API backend
+  const refresh = () => {
+    setLoading(true);
+    axios
+      .get('http://localhost:3000/assets')
+      .then((res) => {
+        setAssets((res.data as any[]).map(mapAsset));
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  };
 
   return (
     <div className="space-y-6">
@@ -85,7 +120,7 @@ export default function MyAssetsPage() {
             Tổng số: {assets.length} thiết bị
           </span>
           <button 
-            onClick={() => { setLoading(true); setTimeout(() => setLoading(false), 400); }}
+            onClick={refresh}
             className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all border border-slate-700"
             title="Làm mới dữ liệu"
           >
@@ -141,28 +176,32 @@ export default function MyAssetsPage() {
                   <tr key={item.id} className="hover:bg-slate-800/40 transition-colors">
                     <td className="py-4 px-6">
                       <div className="font-semibold text-white">{item.name}</div>
-                      <div className="text-xs text-blue-400 font-mono mt-0.5">{item.code}</div>
+                      <div className="text-xs text-blue-400 font-mono mt-0.5">{item.assetCode}</div>
                     </td>
                     <td className="py-4 px-6">
                       <span className="inline-flex items-center gap-1.5 text-xs text-slate-300 bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700/60">
-                        <Tag className="w-3.5 h-3.5 text-indigo-400" /> {item.category}
+                        <Tag className="w-3.5 h-3.5 text-indigo-400" /> {item.groupName}
                       </span>
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-1.5 text-slate-300 text-xs">
-                        <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" /> 
-                        <span>{item.site}</span>
+                        <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span>{item.facilityName} - {item.areaName}</span>
                       </div>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium border ${
+                        item.status === 'IN_USE'
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                      }`}>
                         <CheckCircle2 className="w-3 h-3" /> {item.status}
                       </span>
                     </td>
                     <td className="py-4 px-6">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                        item.condition === 'Tốt' 
-                          ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' 
+                        item.condition === 'GOOD'
+                          ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
                           : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                       }`}>
                         {item.condition}

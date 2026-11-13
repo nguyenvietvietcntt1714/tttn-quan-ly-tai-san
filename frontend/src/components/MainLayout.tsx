@@ -1,4 +1,3 @@
-import React from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, FileText, History, LogOut, ShieldAlert } from 'lucide-react';
 
