@@ -28,6 +28,15 @@ export class CreateAssetDto {
   @IsUUID()
   facilityId!: string;
 
+  @IsNumber()
+  @IsNotEmpty()
+  @Type(() => Number)
+  categoryId!: number;
+
+  @IsString()
+  @IsNotEmpty()
+  reason!: string;
+
   @IsOptional()
   @IsString()
   model?: string;

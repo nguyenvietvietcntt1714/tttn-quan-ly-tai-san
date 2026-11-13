@@ -1,44 +1,51 @@
-import { Controller, Get, Post, Body, Param, Patch, Query } from '@nestjs/common';
+import { Controller, Post, Body, Patch, Param, Get, Query, UseGuards } from '@nestjs/common';
 import { TicketsService } from './tickets.service';
+import { CurrentUser } from '../auth/current-user.decorator';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('tickets')
+@UseGuards(JwtAuthGuard)
 export class TicketsController {
     constructor(private readonly ticketsService: TicketsService) { }
 
-    @Get()
-    findAll() {
-        return this.ticketsService.findAll();
-    }
-
     @Post()
-    create(@Body() body: { assetId: string; userId: string; type: string; note?: string }) {
-        return this.ticketsService.createTicket(body);
+    async create(
+        @Body() body: { assetId: string; userId: string; type: string; note?: string },
+        @CurrentUser() user: { sub: string },
+    ) {
+        return this.ticketsService.createTicket({
+            ...body,
+            creatorId: user.sub,
+        });
     }
 
     @Patch(':id/cancel')
-    cancel(@Param('id') id: string) {
-        return this.ticketsService.cancelTicket(id);
+    async cancel(
+        @Param('id') id: string,
+        @CurrentUser() user: { sub: string },
+    ) {
+        return this.ticketsService.cancelTicket(id, user.sub);
     }
 
-    // [B5] Endpoint xác nhận hoàn thành phiếu (Điều chuyển / Thu hồi)
     @Patch(':id/complete')
-    complete(@Param('id') id: string) {
-        return this.ticketsService.completeTicket(id);
+    async complete(
+        @Param('id') id: string,
+        @CurrentUser() user: { sub: string },
+    ) {
+        return this.ticketsService.completeTicket(id, user.sub);
     }
 
-    // [B6] Endpoint lấy lịch sử theo tài sản và khoảng thời gian (Query params: startDate, endDate)
-    @Get('history/:assetId')
-    getHistory(
-        @Param('assetId') assetId: string,
+    @Get()
+    async findAll() {
+        return this.ticketsService.findAll();
+    }
+
+    @Get('asset-history')
+    async getAssetHistory(
+        @Query('assetId') assetId: string,
         @Query('startDate') startDate?: string,
         @Query('endDate') endDate?: string,
     ) {
         return this.ticketsService.getAssetHistory(assetId, startDate, endDate);
-    }
-
-    // [B6] Endpoint tạo phiếu sửa sai có tham chiếu
-    @Post('correction')
-    createCorrection(@Body() body: { assetId: string; referenceTicketId: string; userId: string; note: string }) {
-        return this.ticketsService.createCorrectionTicket(body);
     }
 }

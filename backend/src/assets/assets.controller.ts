@@ -3,14 +3,17 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
+  Res,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Asset } from '@prisma/client';
+import type { Response } from 'express';
 
 import { AssetsService } from './assets.service';
 import { CreateAssetDto } from './dto/create-asset.dto';
@@ -29,6 +32,27 @@ export class AssetsController {
   @ApiOperation({ summary: 'Tìm kiếm và lọc tài sản' })
   findAll(@Query() query: FindAssetsQueryDto) {
     return this.assetsService.findFiltered(query);
+  }
+
+  // GET /assets/export: Xuất CSV toàn bộ kết quả đang lọc (phải trước route :id)
+  @Get('export')
+  @ApiOperation({ summary: 'Xuất CSV toàn bộ kết quả lọc hiện tại' })
+  @Header(
+    'Content-Type',
+    'text/csv; charset=utf-8',
+  )
+  async exportCsv(
+    @Query() query: FindAssetsQueryDto,
+    @Res() res: Response,
+  ) {
+    const csv = await this.assetsService.exportCsv(query);
+    const filename = `tai-san-${new Date().toISOString().slice(0, 10)}.csv`;
+
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${filename}"`,
+    );
+    res.send(csv);
   }
 
   // GET /assets/:id: Xem chi tiết tài sản

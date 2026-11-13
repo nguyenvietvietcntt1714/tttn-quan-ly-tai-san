@@ -4,7 +4,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, Asset } from '@prisma/client';
+import {
+  Prisma,
+  Asset,
+  ManagementStatus,
+  AssetCondition,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
@@ -83,6 +88,7 @@ export class AssetsService {
   async create(dto: CreateAssetDto) {
     const {
       facilityId,
+      categoryId,
       receiptDate,
       warrantyDate,
       ...assetData
@@ -152,6 +158,7 @@ export class AssetsService {
       return await this.prisma.asset.create({
         data: {
           ...assetData,
+          categoryId,
           receiptDate: receiptDate
             ? new Date(receiptDate)
             : undefined,
@@ -242,34 +249,9 @@ export class AssetsService {
 
   // Tìm kiếm, lọc và phân trang tài sản
   async findFiltered(query: FindAssetsQueryDto) {
-    const {
-      search,
-      facilityId,
-      areaId,
-      groupId,
-      managementStatus,
-      condition,
-      page = 1,
-      limit = 10,
-    } = query;
+    const { page = 1, limit = 10 } = query;
 
-    const where: Prisma.AssetWhereInput = {
-      ...(search?.trim()
-        ? {
-            OR: [
-              { assetCode: { contains: search.trim(), mode: 'insensitive' } },
-              { name: { contains: search.trim(), mode: 'insensitive' } },
-              { brand: { contains: search.trim(), mode: 'insensitive' } },
-              { serial: { contains: search.trim(), mode: 'insensitive' } },
-            ],
-          }
-        : {}),
-      ...(groupId ? { groupId } : {}),
-      ...(areaId ? { areaId } : {}),
-      ...(facilityId ? { area: { facilityId } } : {}),
-      ...(managementStatus ? { managementStatus } : {}),
-      ...(condition ? { condition } : {}),
-    };
+    const where = this.buildAssetWhere(query);
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.asset.findMany({
@@ -502,5 +484,115 @@ export class AssetsService {
         asset: updated,
       };
     });
+  }
+
+  // Bộ lọc dùng chung cho danh sách, phân trang và xuất CSV
+  private buildAssetWhere(query: FindAssetsQueryDto): Prisma.AssetWhereInput {
+    const {
+      search,
+      facilityId,
+      areaId,
+      groupId,
+      managementStatus,
+      condition,
+    } = query;
+
+    return {
+      ...(search?.trim()
+        ? {
+            OR: [
+              { assetCode: { contains: search.trim(), mode: 'insensitive' } },
+              { name: { contains: search.trim(), mode: 'insensitive' } },
+              { brand: { contains: search.trim(), mode: 'insensitive' } },
+              { serial: { contains: search.trim(), mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+      ...(groupId ? { groupId } : {}),
+      ...(areaId ? { areaId } : {}),
+      ...(facilityId ? { area: { facilityId } } : {}),
+      ...(managementStatus ? { managementStatus } : {}),
+      ...(condition ? { condition } : {}),
+    };
+  }
+
+  // Xuất CSV toàn bộ kết quả đang lọc (không phân trang), kèm BOM UTF-8 cho Excel
+  async exportCsv(query: FindAssetsQueryDto): Promise<string> {
+    const where = this.buildAssetWhere(query);
+
+    const assets = await this.prisma.asset.findMany({
+      where,
+      include: {
+        group: true,
+        category: true,
+        area: { include: { facility: true } },
+        assignedUser: {
+          select: { username: true, fullName: true },
+        },
+        assignedDept: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    const statusLabel: Record<ManagementStatus, string> = {
+      AVAILABLE: 'Sẵn sàng',
+      IN_USE: 'Đang sử dụng',
+      INACTIVE: 'Ngừng theo dõi',
+    };
+
+    const conditionLabel: Record<AssetCondition, string> = {
+      GOOD: 'Tốt',
+      NEEDS_INSPECTION: 'Cần kiểm tra',
+      BROKEN: 'Hỏng',
+    };
+
+    const header = [
+      'Mã tài sản',
+      'Tên tài sản',
+      'Nhóm',
+      'Danh mục',
+      'Cơ sở',
+      'Khu vực',
+      'Bên chịu trách nhiệm',
+      'Trạng thái quản lý',
+      'Tình trạng',
+      'Model',
+      'Serial',
+      'Hãng',
+      'Ngày tiếp nhận',
+      'Hạn bảo hành',
+      'Giá trị mua',
+      'Ghi chú',
+    ];
+
+    const rows = assets.map((a) => [
+      a.assetCode,
+      a.name,
+      a.group?.name ?? '',
+      a.category?.name ?? '',
+      a.area?.facility?.name ?? '',
+      a.area?.name ?? '',
+      a.assignedUser?.fullName ?? a.assignedDept?.name ?? '',
+      statusLabel[a.managementStatus],
+      conditionLabel[a.condition],
+      a.model ?? '',
+      a.serial ?? '',
+      a.brand ?? '',
+      a.receiptDate ? a.receiptDate.toISOString().slice(0, 10) : '',
+      a.warrantyDate ? a.warrantyDate.toISOString().slice(0, 10) : '',
+      a.purchaseValue !== null && a.purchaseValue !== undefined
+        ? String(a.purchaseValue)
+        : '',
+      a.notes ?? '',
+    ]);
+
+    const escape = (value: string) =>
+      /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+
+    const lines = [header, ...rows]
+      .map((row) => row.map((cell) => escape(String(cell))).join(','))
+      .join('\r\n');
+
+    return `\uFEFF${lines}`;
   }
 }

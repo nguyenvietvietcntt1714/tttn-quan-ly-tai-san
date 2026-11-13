@@ -21,6 +21,7 @@ model User {
   username     String      @unique
   password     String
   fullName     String
+  email        String      @unique
   role         Role        @default(USER)
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id])
