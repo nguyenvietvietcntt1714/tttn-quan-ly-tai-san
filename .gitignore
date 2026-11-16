@@ -11,8 +11,10 @@ build/
 .env.*
 !.env.example
 
-# Database files & dumps
+# Database files & dumps (cho phép commit file dump demo trong thư mục database/)
 *.sql
+!database/*.sql
+!backend/prisma/migrations/**/*.sql
 *.sqlite
 *.db
 pgdata/

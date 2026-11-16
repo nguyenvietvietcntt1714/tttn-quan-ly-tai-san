@@ -24,6 +24,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
     try {
       const res = await authApi.login({ username, password });
       const userSession = {
+        id: res.user.id,
         username: res.user.username,
         fullName: res.user.fullName,
         role: res.user.role,
@@ -45,81 +46,78 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col lg:flex-row">
-      {/* BÊN TRÁI: Khu vực giới thiệu */}
-      <div className="lg:w-7/12 bg-gradient-to-br from-slate-900 via-blue-950 to-slate-950 p-8 sm:p-12 lg:p-16 flex flex-col justify-between relative overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-800/80">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
-
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row text-slate-800">
+      {/* BÊN TRÁI: Khu vực giới thiệu - Sáng màu, rõ ràng */}
+      <div className="lg:w-7/12 bg-gradient-to-br from-sky-50 via-white to-blue-50 p-8 sm:p-12 lg:p-16 flex flex-col justify-between relative overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-200">
         <div className="relative z-10 flex items-center gap-3">
-          <div className="p-3 bg-blue-600/20 text-blue-400 rounded-2xl border border-blue-500/30 shadow-lg">
-            <ShieldCheck className="w-8 h-8" />
+          <div className="p-3 bg-sky-600 text-white rounded-2xl shadow-md shadow-sky-600/20">
+            <ShieldCheck className="w-7 h-7" />
           </div>
           <div>
-            <span className="text-xs font-bold uppercase tracking-widest text-blue-400">Hệ Thống Nội Bộ</span>
-            <h2 className="text-lg font-bold text-white">Asset Management</h2>
+            <span className="text-xs font-bold uppercase tracking-widest text-sky-700">Hệ Thống Nội Bộ</span>
+            <h2 className="text-lg font-bold text-slate-900">Quản Lý Tài Sản Doanh Nghiệp</h2>
           </div>
         </div>
 
-        <div className="relative z-10 my-12 lg:my-0 max-w-xl">
-          <span className="inline-flex items-center gap-1.5 py-1 px-3 rounded-full bg-blue-500/10 text-blue-400 text-xs font-semibold mb-6 border border-blue-500/20">
-            <Activity className="w-3.5 h-3.5" /> Quản lý thông minh & Đồng bộ
+        <div className="relative z-10 my-10 lg:my-0 max-w-xl">
+          <span className="inline-flex items-center gap-1.5 py-1 px-3 rounded-full bg-sky-100 text-sky-800 text-xs font-semibold mb-6 border border-sky-200">
+            <Activity className="w-3.5 h-3.5" /> Quản lý tập trung & Đồng bộ thời gian thực
           </span>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight mb-6">
-            Quản lý tài sản tập trung, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">minh bạch và hiệu quả.</span>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-6">
+            Kiểm soát vòng đời tài sản <span className="text-sky-600">minh bạch, chính xác.</span>
           </h1>
-          <p className="text-slate-400 text-base sm:text-lg mb-8 leading-relaxed">
-            Giải pháp tối ưu hóa vòng đời thiết bị, kiểm soát luồng bàn giao và điều chuyển tài sản cơ sở vật chất một cách chính xác nhất.
+          <p className="text-slate-600 text-base sm:text-lg mb-8 leading-relaxed">
+            Hệ thống quản lý danh mục thiết bị, lập phiếu bàn giao, điều chuyển, thu hồi và truy vết lịch sử biến động cơ sở vật chất nội bộ.
           </p>
 
           <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="mt-1 p-1 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20">
+            <div className="flex items-start gap-3 bg-white/80 p-4 rounded-xl border border-slate-200/80 shadow-sm">
+              <div className="mt-0.5 p-1 bg-emerald-100 text-emerald-700 rounded-full">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-white font-semibold text-sm">Theo dõi tài sản theo thời gian thực</h3>
-                <p className="text-slate-400 text-xs mt-0.5">Nắm bắt chính xác tình trạng, vị trí và người chịu trách nhiệm.</p>
+                <h3 className="text-slate-900 font-semibold text-sm">Theo dõi trạng thái & tình trạng thực tế</h3>
+                <p className="text-slate-600 text-xs mt-0.5">Phân định rõ trạng thái Sẵn sàng, Đang sử dụng, Ngừng theo dõi và đơn vị chịu trách nhiệm.</p>
               </div>
             </div>
-            <div className="flex items-start gap-3">
-              <div className="mt-1 p-1 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20">
+            <div className="flex items-start gap-3 bg-white/80 p-4 rounded-xl border border-slate-200/80 shadow-sm">
+              <div className="mt-0.5 p-1 bg-emerald-100 text-emerald-700 rounded-full">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-white font-semibold text-sm">Quản lý bàn giao và người sử dụng</h3>
-                <p className="text-slate-400 text-xs mt-0.5">Quy trình lập phiếu minh bạch, chống ghi đè dữ liệu xung đột.</p>
+                <h3 className="text-slate-900 font-semibold text-sm">Quy trình phiếu nghiệp vụ chống ghi đè</h3>
+                <p className="text-slate-600 text-xs mt-0.5">Kiểm soát chặt chẽ trạng thái phiếu (Nháp / Đã xác nhận / Đã hủy) và khóa phiên bản Optimistic Locking.</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="relative z-10 flex items-center justify-between text-xs text-slate-500 pt-6 border-t border-slate-800/80">
-          <p>© 2026 Đồ Án Tốt Nghiệp - Nhóm Khoa</p>
-          <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Hệ thống hoạt động bình thường
+        <div className="relative z-10 flex items-center justify-between text-xs text-slate-500 pt-6 border-t border-slate-200">
+          <p>© 2026 Thực Tập Tốt Nghiệp — Hệ Thống Quản Lý Tài Sản</p>
+          <span className="flex items-center gap-1.5 text-emerald-700 font-semibold">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Hệ thống sẵn sàng
           </span>
         </div>
       </div>
 
       {/* BÊN PHẢI: Khung đăng nhập */}
-      <div className="lg:w-5/12 bg-slate-900 p-8 sm:p-12 lg:p-16 flex items-center justify-center">
-        <div className="max-w-md w-full bg-slate-950/60 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-800 p-8 sm:p-10">
+      <div className="lg:w-5/12 bg-slate-50 p-8 sm:p-12 lg:p-16 flex items-center justify-center">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-slate-200 p-8 sm:p-10">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-white tracking-wide">Đăng Nhập</h2>
-            <p className="text-sm text-slate-400 mt-1">Nhập thông tin tài khoản của bạn</p>
+            <h2 className="text-2xl font-bold text-slate-900">Đăng Nhập Hệ Thống</h2>
+            <p className="text-sm text-slate-500 mt-1">Nhập thông tin tài khoản được cấp</p>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm flex items-start gap-3">
+            <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm flex items-start gap-3">
               <span className="mt-0.5">⚠️</span>
-              <span className="leading-relaxed">{error}</span>
+              <span className="leading-relaxed font-medium">{error}</span>
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">Tên đăng nhập</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Tên đăng nhập</label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                   <User className="w-5 h-5" />
@@ -129,14 +127,14 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
-                  className="w-full pl-12 pr-4 py-3.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-sm font-medium"
+                  className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-sky-600 focus:ring-2 focus:ring-sky-500/20 transition-all text-sm font-medium"
                   placeholder="Nhập tài khoản (vd: manager)"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">Mật khẩu</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Mật khẩu</label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                   <Lock className="w-5 h-5" />
@@ -146,13 +144,13 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full pl-12 pr-12 py-3.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-sm font-medium"
+                  className="w-full pl-12 pr-12 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-sky-600 focus:ring-2 focus:ring-sky-500/20 transition-all text-sm font-medium"
                   placeholder="Nhập mật khẩu (vd: 123456)"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-200 transition-colors"
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -165,47 +163,49 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-950"
+                  className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                 />
-                <span className="text-slate-300 text-xs font-medium">Ghi nhớ đăng nhập</span>
+                <span className="text-slate-600 text-xs font-medium">Ghi nhớ đăng nhập</span>
               </label>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-3 py-4 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/30 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 text-base group"
+              className="w-full mt-2 py-3.5 px-4 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-xl shadow-md shadow-sky-600/20 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 text-sm group"
             >
               {loading ? (
-                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 <>
-                  <span>Đăng Nhập Hệ Thống</span>
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  <span>Đăng Nhập</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </>
               )}
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-slate-800">
-            <p className="text-xs font-semibold text-slate-400 mb-2.5 flex items-center gap-1.5">
-              <KeyRound className="w-3.5 h-3.5 text-blue-400" /> Nhấp nhanh tài khoản test:
+          <div className="mt-8 pt-6 border-t border-slate-200">
+            <p className="text-xs font-semibold text-slate-500 mb-3 flex items-center gap-1.5">
+              <KeyRound className="w-3.5 h-3.5 text-sky-600" /> Chọn nhanh tài khoản demo:
             </p>
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <div 
+              <button
+                type="button"
                 onClick={() => { setUsername('manager'); setPassword('123456'); }}
-                className="p-3 bg-slate-900 hover:bg-slate-800/80 border border-slate-800 hover:border-blue-500/50 rounded-xl cursor-pointer transition-all group"
+                className="text-left p-3 bg-slate-50 hover:bg-sky-50 border border-slate-200 hover:border-sky-300 rounded-xl cursor-pointer transition-all"
               >
-                <p className="font-bold text-blue-400 group-hover:text-blue-300">Quản Lý</p>
-                <p className="text-slate-500 mt-0.5">manager / 123456</p>
-              </div>
-              <div 
+                <p className="font-bold text-sky-700">Quản Lý (Manager)</p>
+                <p className="text-slate-500 mt-0.5 font-mono">manager / 123456</p>
+              </button>
+              <button
+                type="button"
                 onClick={() => { setUsername('user1'); setPassword('123456'); }}
-                className="p-3 bg-slate-900 hover:bg-slate-800/80 border border-slate-800 hover:border-emerald-500/50 rounded-xl cursor-pointer transition-all group"
+                className="text-left p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-xl cursor-pointer transition-all"
               >
-                <p className="font-bold text-emerald-400 group-hover:text-emerald-300">Người Dùng</p>
-                <p className="text-slate-500 mt-0.5">user1 / 123456</p>
-              </div>
+                <p className="font-bold text-emerald-700">Nhân Sự (User)</p>
+                <p className="text-slate-500 mt-0.5 font-mono">user1 / 123456</p>
+              </button>
             </div>
           </div>
         </div>

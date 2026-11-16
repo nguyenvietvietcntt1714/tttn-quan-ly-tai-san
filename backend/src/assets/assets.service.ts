@@ -48,6 +48,63 @@ export class AssetsService {
     });
   }
 
+  // Danh sách tài sản đang bàn giao cho một người dùng cụ thể
+  async findByUser(userId: string) {
+    return this.prisma.asset.findMany({
+      where: {
+        assignedUserId: userId,
+        managementStatus: ManagementStatus.IN_USE,
+      },
+      include: {
+        group: true,
+        category: true,
+        area: {
+          include: {
+            facility: true,
+          },
+        },
+        assignedUser: {
+          select: {
+            id: true,
+            username: true,
+            fullName: true,
+          },
+        },
+        assignedDept: true,
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+    });
+  }
+
+  // Lấy danh mục phục vụ form tạo/lọc tài sản
+  async getCatalogs() {
+    const [categories, groups, facilities, areas, departments] =
+      await Promise.all([
+        this.prisma.category.findMany({ orderBy: { id: 'asc' } }),
+        this.prisma.assetGroup.findMany({
+          where: { isActive: true },
+          orderBy: { name: 'asc' },
+        }),
+        this.prisma.facility.findMany({
+          where: { isActive: true },
+          orderBy: { name: 'asc' },
+        }),
+        this.prisma.area.findMany({
+          where: { isActive: true },
+          include: { facility: true },
+          orderBy: { name: 'asc' },
+        }),
+        this.prisma.department.findMany({
+          where: { isActive: true },
+          orderBy: { name: 'asc' },
+        }),
+      ]);
+
+    return { categories, groups, facilities, areas, departments };
+  }
+
   // Xem chi tiết một tài sản
   async findOne(id: string) {
     const asset = await this.prisma.asset.findUnique({
@@ -91,6 +148,7 @@ export class AssetsService {
       categoryId,
       receiptDate,
       warrantyDate,
+      reason,
       ...assetData
     } = dto;
 
@@ -249,7 +307,8 @@ export class AssetsService {
 
   // Tìm kiếm, lọc và phân trang tài sản
   async findFiltered(query: FindAssetsQueryDto) {
-    const { page = 1, limit = 10 } = query;
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(500, Math.max(1, Number(query.limit) || 10));
 
     const where = this.buildAssetWhere(query);
 
@@ -260,7 +319,14 @@ export class AssetsService {
           group: true,
           category: true,
           area: { include: { facility: true } },
-          assignedUser: true,
+          assignedUser: {
+            select: {
+              id: true,
+              username: true,
+              fullName: true,
+              email: true,
+            },
+          },
           assignedDept: true,
         },
         orderBy: { updatedAt: 'desc' },
@@ -276,7 +342,7 @@ export class AssetsService {
         page,
         limit,
         total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.max(1, Math.ceil(total / limit)),
       },
     };
   }
@@ -493,6 +559,7 @@ export class AssetsService {
       facilityId,
       areaId,
       groupId,
+      assignedUserId,
       managementStatus,
       condition,
     } = query;
@@ -511,6 +578,7 @@ export class AssetsService {
       ...(groupId ? { groupId } : {}),
       ...(areaId ? { areaId } : {}),
       ...(facilityId ? { area: { facilityId } } : {}),
+      ...(assignedUserId ? { assignedUserId } : {}),
       ...(managementStatus ? { managementStatus } : {}),
       ...(condition ? { condition } : {}),
     };

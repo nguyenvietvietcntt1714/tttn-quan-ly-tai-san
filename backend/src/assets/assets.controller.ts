@@ -10,6 +10,7 @@ import {
   Post,
   Query,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Asset } from '@prisma/client';
@@ -21,6 +22,8 @@ import { UpdateAssetDto } from './dto/update-asset.dto';
 import { FindAssetsQueryDto } from './dto/find-assets-query.dto';
 import { ChangeAssetConditionDto } from './dto/change-asset-condition.dto';
 import { DeactivateAssetDto } from './dto/deactivate-asset.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
 
 @ApiTags('Assets')
 @Controller('assets')
@@ -32,6 +35,21 @@ export class AssetsController {
   @ApiOperation({ summary: 'Tìm kiếm và lọc tài sản' })
   findAll(@Query() query: FindAssetsQueryDto) {
     return this.assetsService.findFiltered(query);
+  }
+
+  // GET /assets/my: Danh sách tài sản đang bàn giao cho người dùng đăng nhập
+  @Get('my')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Danh sách tài sản của người dùng hiện tại' })
+  findMyAssets(@CurrentUser() user: { sub: string }) {
+    return this.assetsService.findByUser(user.sub);
+  }
+
+  // GET /assets/catalogs: Danh mục nhóm, loại, cơ sở, khu vực, phòng ban
+  @Get('catalogs')
+  @ApiOperation({ summary: 'Lấy danh sách danh mục phục vụ tạo/lọc tài sản' })
+  getCatalogs() {
+    return this.assetsService.getCatalogs();
   }
 
   // GET /assets/export: Xuất CSV toàn bộ kết quả đang lọc (phải trước route :id)

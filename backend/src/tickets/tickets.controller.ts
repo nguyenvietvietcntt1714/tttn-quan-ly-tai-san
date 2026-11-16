@@ -10,7 +10,7 @@ export class TicketsController {
 
     @Post()
     async create(
-        @Body() body: { assetId: string; userId: string; type: string; note?: string },
+        @Body() body: { assetId: string; userId?: string; toAreaId?: string; type: string; note?: string },
         @CurrentUser() user: { sub: string },
     ) {
         return this.ticketsService.createTicket({
@@ -42,7 +42,7 @@ export class TicketsController {
 
     @Get('asset-history')
     async getAssetHistory(
-        @Query('assetId') assetId: string,
+        @Query('assetId') assetId?: string,
         @Query('startDate') startDate?: string,
         @Query('endDate') endDate?: string,
     ) {

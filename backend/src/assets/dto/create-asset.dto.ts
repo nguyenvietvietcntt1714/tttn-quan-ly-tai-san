@@ -33,9 +33,9 @@ export class CreateAssetDto {
   @Type(() => Number)
   categoryId!: number;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  reason!: string;
+  reason?: string;
 
   @IsOptional()
   @IsString()

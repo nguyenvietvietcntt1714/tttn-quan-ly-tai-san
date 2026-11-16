@@ -28,6 +28,10 @@ export class FindAssetsQueryDto {
   groupId?: string;
 
   @IsOptional()
+  @IsUUID()
+  assignedUserId?: string;
+
+  @IsOptional()
   @IsEnum(ManagementStatus)
   managementStatus?: ManagementStatus;
 
@@ -45,6 +49,6 @@ export class FindAssetsQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(100)
+  @Max(500)
   limit = 10;
 }
